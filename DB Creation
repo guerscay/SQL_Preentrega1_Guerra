@@ -1,0 +1,161 @@
+-- Creación de la DB
+CREATE SCHEMA `hello_pozos` ;
+
+-- Creación de las tablas complementarias
+
+CREATE TABLE provincia (
+provincia VARCHAR (15),
+id_provincia INT AUTO_INCREMENT PRIMARY KEY);
+
+CREATE TABLE cuenca (
+cuenca VARCHAR (20),
+id_cuenca CHAR (03) PRIMARY KEY);
+
+CREATE TABLE concesiones (
+concesion VARCHAR (50),
+id_concesion INT AUTO_INCREMENT PRIMARY KEY);
+
+CREATE TABLE formacion (
+formacion VARCHAR (20),
+id_formacion VARCHAR (05) PRIMARY KEY);
+
+CREATE TABLE estado (
+estado VARCHAR (30),
+idestado INT PRIMARY KEY);
+
+CREATE TABLE terminacion (
+terminacion VARCHAR (30),
+id_terminacion INT PRIMARY KEY);
+
+CREATE TABLE tipo (
+tipo VARCHAR (30),
+id_tipo INT PRIMARY KEY);
+
+CREATE TABLE subtipo (
+subtipo VARCHAR (30),
+id_subtipo INT PRIMARY KEY);
+
+ALTER TABLE estado
+RENAME COLUMN idestado to id_estado;
+
+-- Creación de tablas intermedias 
+
+CREATE TABLE provincia_cuenca(
+provincia VARCHAR (15),
+id_provincia INT,
+cuenca VARCHAR (20),
+id_cuenca CHAR (03),
+id_provincia_cuenca VARCHAR (06) PRIMARY KEY
+);
+
+ALTER TABLE provincia_cuenca
+	ADD CONSTRAINT fk_provincia
+	FOREIGN KEY (id_provincia) REFERENCES provincia(id_provincia),
+    ADD CONSTRAINT fk_cuenca
+	FOREIGN KEY (id_cuenca) REFERENCES cuenca(id_cuenca);
+
+ CREATE TABLE concesion_formacion(
+concesion VARCHAR (50),
+id_concesion INT,
+formacion VARCHAR (20),
+id_formacion VARCHAR (05),
+id_concesion_formacion VARCHAR (10) NOT NULL PRIMARY KEY
+);
+
+ALTER TABLE concesion_formacion
+	ADD CONSTRAINT fk_concesion
+	FOREIGN KEY (id_concesion) REFERENCES concesiones(id_concesion),
+    ADD CONSTRAINT fk_formacion
+	FOREIGN KEY (id_formacion) REFERENCES formacion(id_formacion);
+    
+CREATE TABLE locacion(
+provincia VARCHAR (15),
+id_provincia INT,
+cuenca VARCHAR (20),
+id_cuenca CHAR (03),
+concesion VARCHAR (50),
+id_concesion INT,
+formacion VARCHAR (20),
+id_formacion VARCHAR (05),
+id_locacion VARCHAR (10) NOT NULL PRIMARY KEY
+);
+
+ALTER TABLE locacion
+	ADD CONSTRAINT fk_concesion1
+	FOREIGN KEY (id_concesion) REFERENCES concesiones(id_concesion),
+    ADD CONSTRAINT fk_formacion1
+	FOREIGN KEY (id_formacion) REFERENCES formacion(id_formacion),
+    ADD CONSTRAINT fk_provincia1
+	FOREIGN KEY (id_provincia) REFERENCES provincia(id_provincia),
+    ADD CONSTRAINT fk_cuenca1
+	FOREIGN KEY (id_cuenca) REFERENCES cuenca(id_cuenca);
+
+ALTER TABLE locacion
+	ADD id_provincia_cuenca VARCHAR (06),
+    ADD id_concesion_formacion VARCHAR (10);
+
+ALTER TABLE locacion
+	ADD CONSTRAINT fk_locacion1
+	FOREIGN KEY (id_provincia_cuenca) REFERENCES provincia_cuenca(id_provincia_cuenca),
+    ADD CONSTRAINT fk_locacion2
+	FOREIGN KEY (id_concesion_formacion) REFERENCES concesion_formacion(id_concesion_formacion);
+
+ALTER TABLE locacion
+MODIFY COLUMN id_locacion VARCHAR (20);
+
+CREATE TABLE operadoras(
+operadora VARCHAR (50),
+Alias VARCHAR (20),
+id_operadora INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+cuit VARCHAR (20),
+fecha_inscripcion DATE,
+domicilio VARCHAR (50),
+ciudad VARCHAR (20)
+);
+
+-- Creación de tablas principales
+
+CREATE TABLE operaciones (
+id_operacion INT AUTO_INCREMENT NOT NULL PRIMARY KEY,
+id_pozo INT ,
+pozo VARCHAR (30) NOT NULL,
+id_operadora INT NOT NULL,
+id_cuenca CHAR (03),
+id_concesion INT,
+id_formacion VARCHAR (05),
+id_concesion_formacion VARCHAR (10),
+id_tipo INT,
+id_subtipo INT,
+entrada_horizontal_m FLOAT,
+cantidad_fracturas INT,
+id_terminacion INT,
+arena_nacional_ton FLOAT,
+arena_importada_ton FLOAT,
+agua_inyectada_m3 FLOAT,
+co2_inyectado_m3 FLOAT,
+pmax_psi FLOAT,
+potencia_equipos_hp FLOAT,
+fecha_inicio_frac FLOAT,
+fecha_fin_frac FLOAT
+);
+
+CREATE TABLE pozos(
+pozo VARCHAR (30) NOT NULL,
+id_pozo INT AUTO_INCREMENT NOT NULL PRIMARY KEY,
+id_concesion INT,
+id_cuenca CHAR (03),
+id_provincia INT,
+id_provincia_cuenca VARCHAR (06),
+id_formacion VARCHAR (05),
+id_concesion_formacion VARCHAR (10),
+id_locacion VARCHAR (15),
+id_operadora INT,
+cota_m FLOAT,
+profundidad_total_m FLOAT,
+id_tipo INT,
+id_estado INT,
+fecha_inicio_terminacion DATE,
+fecha_final_terminacion DATE,
+coordenada_x POINT,
+coordenada_y POINT
+);
