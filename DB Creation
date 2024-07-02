@@ -159,3 +159,64 @@ fecha_final_terminacion DATE,
 coordenada_x POINT,
 coordenada_y POINT
 );
+
+
+CREATE TABLE producciones(
+	id_produccion INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    pozo VARCHAR (30) NOT NULL,
+    year INT,
+    mes INT,
+    id_pozo INT NOT NULL,
+    prod_oil_m3 FLOAT,
+    prod_gas_mm3 FLOAT,
+    prod_agua_m3 FLOAT,
+    iny_agua_m3 FLOAT,
+    iny_gas_m3 FLOAT,
+    tef FLOAT,
+    tipo_extraccion VARCHAR (20),
+    clasificacion VARCHAR (30)
+);
+
+ALTER TABLE operaciones
+DROP COLUMN id_cuenca, 
+   DROP COLUMN id_operadora, 
+    DROP COLUMN id_concesion,
+    DROP COLUMN id_concesion_formacion;
+    
+ALTER TABLE operaciones
+	ADD CONSTRAINT fk_operaciones1
+	FOREIGN KEY (id_pozo) REFERENCES pozos(id_pozo),
+    ADD CONSTRAINT fk_operaciones2
+	FOREIGN KEY (id_formacion) REFERENCES formacion(id_formacion),
+    ADD CONSTRAINT fk_operaciones3
+	FOREIGN KEY (id_tipo) REFERENCES tipo(id_tipo),
+    ADD CONSTRAINT fk_operaciones4
+	FOREIGN KEY (id_subtipo) REFERENCES subtipo(id_subtipo),
+	ADD CONSTRAINT fk_operaciones5
+	FOREIGN KEY (id_terminacion) REFERENCES terminacion(id_terminacion);
+
+ALTER TABLE pozos
+	ADD CONSTRAINT fk_pozos1
+	FOREIGN KEY (id_concesion) REFERENCES concesiones(id_concesion),
+    ADD CONSTRAINT fk_pozos2
+	FOREIGN KEY (id_cuenca) REFERENCES cuenca(id_cuenca),
+    ADD CONSTRAINT fk_pozos3
+	FOREIGN KEY (id_provincia) REFERENCES provincia(id_provincia),
+    ADD CONSTRAINT fk_pozos4
+	FOREIGN KEY (id_provincia_cuenca) REFERENCES provincia_cuenca(id_provincia_cuenca),
+	ADD CONSTRAINT fk_pozos5
+	FOREIGN KEY (id_formacion) REFERENCES formacion(id_formacion),
+    ADD CONSTRAINT fk_pozos6
+	FOREIGN KEY (id_concesion_formacion) REFERENCES concesion_formacion(id_concesion_formacion),
+    ADD CONSTRAINT fk_pozos7
+	FOREIGN KEY (id_locacion) REFERENCES locacion(id_locacion),
+    ADD CONSTRAINT fk_pozos8
+	FOREIGN KEY (id_operadora) REFERENCES operadoras(id_operadora),
+    ADD CONSTRAINT fk_pozos9
+	FOREIGN KEY (id_tipo) REFERENCES tipo(id_tipo),
+    ADD CONSTRAINT fk_pozos10
+	FOREIGN KEY (id_estado) REFERENCES estado(id_estado);
+    
+ALTER TABLE producciones
+	ADD CONSTRAINT fk_prod1
+	FOREIGN KEY (id_pozo) REFERENCES pozos(id_pozo);
