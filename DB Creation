@@ -220,3 +220,10 @@ ALTER TABLE pozos
 ALTER TABLE producciones
 	ADD CONSTRAINT fk_prod1
 	FOREIGN KEY (id_pozo) REFERENCES pozos(id_pozo);
+
+ALTER TABLE operaciones
+ADD id_concesion_formacion VARCHAR (10);
+
+ALTER TABLE operaciones
+	ADD CONSTRAINT fk_op1
+	FOREIGN KEY (id_concesion_formacion) REFERENCES concesion_formacion(id_concesion_formacion);
