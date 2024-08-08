@@ -1,0 +1,198 @@
+USE hello_pozos;
+SET SQL_SAFE_UPDATES = 0;
+
+-- Funcion # 1 - Alias de pozo
+/* Los pozos petroleros normalmente tienen un nombre largo que incluye el nombre de la operadora, el nombre de la provincia o concesion
+y finalmente el nombre del pozo. A esto se le llama "Nombre Completo" mientras que el nombre de pozo se llama sólo "Nombre de pozo" o
+"Alias". Con esta funcion se desea ver solamente el Alias*/
+
+SELECT pozo
+,		locate('.',pozo) as primer_punto
+,		locate('.',pozo,locate('.',pozo) +1) as segundo_punto
+,		trim(substring(pozo,locate('.',pozo,locate('.',pozo) +1)+1,10)) as Alias
+from pozos;
+
+SELECT pozo
+, fn_alias_pozo (pozo) as 'Alias'
+from pozos;
+
+-- Funcion # 2 - Duración relativa de operacion de fractura
+/* Dependiendo de la cantidad de días que dure una operacion de campo, los operadores pueden recibir o no un bono. Arbitrariamente se definió 
+este tiempo como 15 días. Se desea saber, de todas las operaciones realizadas, cuando se recibe bono. En la base de datos original hay fechas
+invertidas o incorrectas por eso se incluye el 'Resultado' "Fecha Incorrecta"*/
+
+select 
+datediff(fecha_fin_frac, fecha_inicio_frac) as 'dias_operacion'
+from operaciones;
+
+select id_operacion, datediff(fecha_fin_frac,fecha_inicio_frac) as 'Dias_operacion'
+, fn_bono_campo (fecha_inicio_frac,fecha_fin_frac) as 'Bono_campo'
+from operaciones;
+
+-- Vista # 1 - operaciones_cgc
+/* Operaciones con: Operadora - Pozo - Provincia - Tipo - Subtipo - Terminacion - Horizontal - Cantidad Fracs - Arena total
+ para los pozos de CGC & CGC-ENERGY (son la misma empresa) */
+ 
+select *
+from POZOS
+WHERE 	id_operadora in 
+		(SELECT id_operadora
+        from operadoras
+        where alias = 'CGC'
+        OR alias = 'CGC - ENERGY');
+        
+select *
+from operaciones as o, pozos as p
+WHERE 	o.id_pozo = p.id_pozo
+AND 	p.id_operadora in 
+		(SELECT id_operadora
+        from operadoras
+        where alias = 'CGC'
+        OR alias = 'CGC - ENERGY');
+        
+select * from operadoras where id_operadora = 8 or id_operadora = 10;
+
+CREATE VIEW operaciones_cgc AS
+SELECT 	co.alias 'Compania'
+, 		fn_alias_pozo (we.pozo) as 'Alias_pozo'
+,		pr.provincia as 'Provincia'
+,		ti.tipo as 'tipo'
+,		st.subtipo as 'subtipo'
+,		t.terminacion as 'terminacion'
+,		op.entrada_horizontal_m as 'metros_horizontal'
+,		op.cantidad_fracturas as 'etapas_frac'
+,		round(sum(op.arena_nacional_ton+arena_importada_ton),3) as 'total_arena_ton'
+FROM  	operadoras as co
+,		pozos as we
+,		provincia as pr
+,		tipo as ti
+,		operaciones as op
+,		subtipo as st
+,		terminacion as t
+WHERE 	we.id_operadora = co.id_operadora
+AND 	we.id_provincia = pr.id_provincia
+AND 	op.id_pozo = we.id_pozo
+AND 	op.id_terminacion = t.id_terminacion
+AND 	op.id_subtipo = st.id_subtipo
+AND 	we.id_tipo = ti.id_tipo
+AND 	we.id_operadora IN 
+			(SELECT id_operadora
+			from operadoras
+			where operadoras.alias = 'CGC'
+			OR operadoras.alias = 'CGC - ENERGY')
+GROUP BY op.id_operacion
+ORDER BY op.entrada_horizontal_m DESC
+;
+
+select * from operaciones_cgc;
+
+-- Vista # 2 - top 10 concesiones_formacion
+/* Vsta general del top 10 de concesiones de acuerdo con la cantidad de pozos que hay en cada una
+incluyendo provincia/ concesion y total de pozos */
+select * from locacion;
+
+CREATE VIEW top10_concesiones_formacion AS
+select provincia
+,		cuenca
+,		concesion
+,		formacion
+,		count(distinct(we.id_pozo)) as 'total_pozos'
+FROM 	locacion as l
+,		pozos as we
+WHERE 	l.id_locacion = we.id_locacion
+GROUP BY l.id_locacion
+ORDER BY total_pozos DESC
+LIMIT 10
+;
+
+select * from top10_concesiones_formacion;
+
+-- Stored procedures
+-- SP1 - Listado y total de pozos NO CONVENCIONALES por cuenca
+
+select * from cuenca;
+
+SELECT we.pozo as 'Pozo', op.operadora as 'Operadora', ty.tipo as 'Tipo', cu.cuenca as 'Cuenca'
+			FROM pozos as we, operadoras as op, tipo as ty, cuenca as cu
+            WHERE we.id_operadora = op.id_operadora
+            AND we.id_tipo = ty.id_tipo
+            AND ty.tipo = 'No Convencional'
+			AND we.id_cuenca = cu.id_cuenca
+            AND cu.cuenca = 'AUSTRAL';
+
+SELECT distinct(count(we.id_pozo)) as 'total_pozos'
+FROM pozos as we
+WHERE we.id_cuenca = 
+		( select id_cuenca 
+		from cuenca 
+		where cuenca = 'Austral')
+AND we.id_tipo = 
+	( select id_tipo 
+		from tipo
+		where tipo = 'No Convencional')
+;
+
+CALL sp_pozos_noc_en_cuenca ('Neuquina');
+CALL sp_pozos_noc_en_cuenca ('Austral');
+CALL sp_pozos_noc_en_cuenca ('Golfo San Jorge');
+CALL sp_pozos_noc_en_cuenca ('Perrito');
+
+-- Stored procedures
+-- SP2 - Resumen de pozos 
+/* Si ingreso el nombre parcial de un pozo quiero ver un listado de todos los pozos que contienen esos caracteres
+y ver tambien a qué operadora pertenecen, donde estan ubicados, cuantas fracturas tienen y qué tipo de pozo es*/ 
+
+select we.pozo as 'Pozos', op.operadora as 'Operadora', pr.provincia as 'Provincia', cu.cuenca as 'Cuenca', co.concesion as 'Concesion'
+,		ty.tipo as 'Tipo', su.subtipo as 'subtipo', count(fr.id_operacion) as 'Total_operaciones_frac'
+from 	pozos as we
+,		operadoras as op
+,		provincia as pr
+,		cuenca as cu
+,		concesiones as co
+,		tipo as ty
+,		operaciones as fr
+,		subtipo as su
+where we.pozo like '%PC-21%'
+AND we.id_operadora = op.id_operadora
+AND we.id_provincia = pr.id_provincia
+AND cu.id_cuenca = we.id_cuenca
+AND we.id_concesion = co.id_concesion
+AND we.id_tipo = ty.id_tipo
+AND fr.id_pozo = we.id_pozo
+AND fr.id_subtipo = su.id_subtipo
+GROUP BY we.pozo,op.operadora,pr.provincia,cu.cuenca,co.concesion,ty.tipo,su.subtipo
+;
+
+CALL sp_resumen_de_pozo ('LMX');
+
+-- Trigger 1
+-- Insertar una nueva operadora en el sistema
+-- Primero creo la tabla de log
+CREATE TABLE historial_log (
+	id_log INT NOT NULL AUTO_INCREMENT PRIMARY KEY
+,	Tabla_modificada VARCHAR(30) NOT NULL
+,	accion varchar(15) NOT NULL
+,	mensaje VARCHAR (400) NOT NULL
+,	usuario VARCHAR (50) NOT NULL
+,	fecha_hora DATETIME NOT NULL
+);
+
+select * from historial_log;
+
+-- TESTEO
+
+INSERT INTO operadoras (operadora,Alias,cuit,domicilio,ciudad)
+VALUES ('tections_south', 'tections','30-21072615-7','Av 1186','La plata, Buenos Aires');
+
+-- Trigger 2
+-- Actualizacion de estado de pozo
+
+SELECT * FROM POZOS where pozo = 'OXY.SC.PC-2081';
+
+UPDATE pozos
+SET id_estado = 9
+where pozo = 'OXY.SC.PC-2081';
+
+select * from historial_log;
+
+describe locacion;
